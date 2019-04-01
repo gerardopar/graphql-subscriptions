@@ -6,24 +6,7 @@ const typeDefs = `
     type Query {
         add(a: Float,b: Float ): Float!
         greeting(name: String, position: String): String!
-        post: Post!
-        me: User!
     }
-
-    type User {
-        id: ID!
-        name: String!
-        email: String!
-        age: Int
-    }
-
-    type Post {
-        id: ID!
-        title: String!
-        body: String!
-        published: Int!
-    }
-
 `;
 
 // * Resolvers
@@ -40,24 +23,6 @@ const resolvers = {
             else {
                 return ('Hello');
             }
-        },
-
-        me(){
-            return ({
-                id: 'gp12345678',
-                name: 'Gerardo Paredes',
-                email: 'gerardparedes23@gmail.com',
-                age: 25
-            });
-        },
-
-        post(){
-            return ({
-                id: 'abc123',
-                title: 'Some Title',
-                body: 'Some Body',
-                published: 2019
-            });
         }
     }
 };
