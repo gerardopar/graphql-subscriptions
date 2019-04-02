@@ -1,12 +1,45 @@
 import { GraphQLServer } from 'graphql-yoga';
 
+// Demo users data
+const users = [{
+        id: '1',
+        name: 'johnDoe',
+        email: 'johndoe@example.com',
+        age: 100
+    }, 
+    {
+        id: '2',
+        name: 'janeDoe',
+        email: 'janedoe@example.com',
+        age: 100
+    }];
+
+// Demo posts data
+const posts = [{
+        id: '1',
+        title: 'Top front-end framework?',
+        body: 'React.JS is Awesome!',
+        published: true
+    },
+    {
+        id: '2',
+        title: 'Favorite Programming Language?',
+        body: 'Javascript :D!!',
+        published: false
+    },
+    {
+        id: '3',
+        title: 'GraphQL?',
+        body: 'Work in Progress....',
+        published: true
+    }]
+
 // * Type & Custom Type definitions (schema)
 // * Optional Arguments
 const typeDefs = `
-    type Query {
-        add(numbers: [Float!]! ): Float!
-        greeting(name: String, position: String): String!
-        grades: [Int!]!
+    type Query { 
+        users(query: String): [User!]!  
+        posts(query: String): [Post!]!     
         post: Post!
         me: User!
     }
@@ -22,7 +55,7 @@ const typeDefs = `
         id: ID!
         title: String!
         body: String!
-        published: Int!
+        published: Boolean!
     }
 
 `;
@@ -30,28 +63,26 @@ const typeDefs = `
 // * Resolvers
 const resolvers = {
     Query: {
-        add(parent, args, ctx, info){
-            if(args.numbers.length === 0) {
-                return (0);
-            } 
-
-            return args.numbers.reduce((accumulator, currentValue) => {
-                return (accumulator + currentValue);
-            });
+        posts(parent, args, ctx, info){
+            if(!args.query) {
+                return posts;
+            }
             
+            return posts.filter((post) => {
+                const isTitleMatch = post.title.toLocaleLowerCase().includes(args.query.toLocaleLowerCase());
+                const isBodyMatch =  post.body.toLowerCase().includes(args.query.toLowerCase());
+                return isTitleMatch || isBodyMatch;
+            });
         },
-
-        greeting(parent, args, ctx, info){
-            if(args.name && args.position) {
-                return (`Hello ${args.name} is a ${args.position}`);
+        
+        users(parent, args, ctx, info){
+            if(!args.query) {
+                return users;
             }
-            else {
-                return ('Hello');
-            }
-        },
-
-        grades(parent, args, ctx, info){
-            return [99, 88, 100];
+            
+            return users.filter((user) => {
+                return user.name.toLowerCase().includes(args.query.toLowerCase());
+            });
         },
 
         me(){
