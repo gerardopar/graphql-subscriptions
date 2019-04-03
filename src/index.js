@@ -19,20 +19,52 @@ const posts = [{
         id: '1',
         title: 'Top front-end framework?',
         body: 'React.JS is Awesome!',
-        published: true
+        published: true,
+        author: '1',
+        comments: []
     },
     {
         id: '2',
         title: 'Favorite Programming Language?',
         body: 'Javascript :D!!',
-        published: false
+        published: false,
+        author: '1',
+        comments: []
     },
     {
         id: '3',
         title: 'GraphQL?',
         body: 'Work in Progress....',
-        published: true
-    }]
+        published: true,
+        author: '2',
+        comments: []
+    }];
+
+// Demo comments data
+const comments = [{
+        id: '1',
+        text: 'first comment',
+        author: '1',
+        post: '1'
+    },
+    {
+        id: '2',
+        text: 'second comment',
+        author: '1',
+        post: '1'
+    },
+    {
+        id: '3',
+        text: 'third comment',
+        author: '2',
+        post: '2'
+    },
+    {
+        id: '4',
+        text: 'fourth comment',
+        author: '2',
+        post: '3'
+    }];
 
 // * Type & Custom Type definitions (schema)
 // * Optional Arguments
@@ -42,6 +74,7 @@ const typeDefs = `
         posts(query: String): [Post!]!     
         post: Post!
         me: User!
+        comments: [Comment!]!
     }
 
     type User {
@@ -49,6 +82,8 @@ const typeDefs = `
         name: String!
         email: String!
         age: Int
+        posts: [Post!]!
+        comments: [Comment!]!
     }
 
     type Post {
@@ -56,6 +91,15 @@ const typeDefs = `
         title: String!
         body: String!
         published: Boolean!
+        author: User!
+        comments: [Comment!]!
+    }
+
+    type Comment {
+        id: ID!
+        text: String!
+        author: User!
+        post: Post!
     }
 
 `;
@@ -100,6 +144,46 @@ const resolvers = {
                 title: 'Some Title',
                 body: 'Some Body',
                 published: 2019
+            });
+        },
+
+        comments(){
+            return [...comments];
+        }
+    },
+    Post: {
+        author(parent, args, ctx, info) {
+            return users.find((user) => {
+                return user.id === parent.author;
+            });
+        },
+        comments(parent, args, ctx, info) {
+            return comments.filter((comment) => {
+                return comment.id === parent.id;
+            });
+        }
+    },
+    User: {
+        posts(parent, args, ctx, info) {
+            return posts.filter((post) => {
+                return post.author === parent.id;
+            });
+        },
+        comments(parent, args, ctx, info) {
+            return comments.filter((comment) => {
+                return comment.author === parent.id;
+            });
+        }
+    },
+    Comment: {
+        author(parent, args, ctx, info) {
+            return users.find((user) => {
+                return user.id === parent.author;
+            });
+        },
+        post(parent, args, ctx, info) {
+            return posts.find((post) => {
+                return post.author === parent.id;
             });
         }
     }
