@@ -22,7 +22,6 @@ const posts = [{
         body: 'React.JS is Awesome!',
         published: true,
         author: '1',
-        comments: []
     },
     {
         id: '2',
@@ -30,7 +29,6 @@ const posts = [{
         body: 'Javascript :D!!',
         published: false,
         author: '1',
-        comments: []
     },
     {
         id: '3',
@@ -38,7 +36,6 @@ const posts = [{
         body: 'Work in Progress....',
         published: true,
         author: '2',
-        comments: []
     }];
 
 // Demo comments data
@@ -72,14 +69,16 @@ const comments = [{
 const typeDefs = `
     type Query { 
         users(query: String): [User!]!  
-        posts(query: String): [Post!]!     
-        post: Post!
+        posts(query: String): [Post!]!   
+        comments: [Comment!]!  
         me: User!
-        comments: [Comment!]!
+        post: Post!
     }
 
     type Mutation {
         createUser(name: String!, email: String!, age: Int!) : User!
+        createPost(title: String!, body: String!, published: Boolean!, author: ID!) : Post!
+        createComment(text: String!, author: ID!, post: ID!) : Comment!
     }
 
     type User {
@@ -112,80 +111,124 @@ const typeDefs = `
 // * Resolvers
 const resolvers = {
     Query: {
-        posts(parent, args, ctx, info){
-            if(!args.query) {
-                return posts;
-            }
-            
-            return posts.filter((post) => {
-                const isTitleMatch = post.title.toLocaleLowerCase().includes(args.query.toLocaleLowerCase());
-                const isBodyMatch =  post.body.toLowerCase().includes(args.query.toLowerCase());
-                return isTitleMatch || isBodyMatch;
-            });
-        },
-        
-        users(parent, args, ctx, info){
-            if(!args.query) {
+        users(parent, args, ctx, info) {
+            if (!args.query) {
                 return users;
             }
-            
+
             return users.filter((user) => {
                 return user.name.toLowerCase().includes(args.query.toLowerCase());
             });
         },
+        posts(parent, args, ctx, info) {
+            if (!args.query) {
+                return posts;
+            }
 
-        me(){
-            return ({
-                id: 'gp12345678',
-                name: 'Gerardo Paredes',
-                email: 'gerardparedes23@gmail.com',
-                age: 25
-            });
+            return posts.filter((post) => {
+                const isTitleMatch = post.title.toLowerCase().includes(args.query.toLowerCase());
+                const isBodyMatch = post.body.toLowerCase().includes(args.query.toLowerCase());
+                return isTitleMatch || isBodyMatch;
+            })
         },
-
-        post(){
-            return ({
-                id: 'abc123',
-                title: 'Some Title',
-                body: 'Some Body',
-                published: 2019
-            });
+        comments(parent, args, ctx, info) {
+            return comments;
         },
-
-        comments(){
-            return [...comments];
+        me() {
+            return {
+                id: '123098',
+                name: 'Mike',
+                email: 'mike@example.com'
+            };
+        },
+        post() {
+            return {
+                id: '092',
+                title: 'GraphQL 101',
+                body: '',
+                published: false
+            };
         }
     },
     Mutation: {
-        createUser(parent, args, ctx, info){
-            console.log(args);
-            const emailTaken = users.some((user) => (user.email === args.email));
+        createUser(parent, args, ctx, info) {
+            const emailTaken = users.some((user) => user.email === args.email);
 
-            if(emailTaken) {
-                throw new Error('Email Taken');
+            if (emailTaken) {
+                throw new Error('Email taken');
             }
-
+            
             const user = {
                 id: uuidv4(),
                 name: args.name,
                 email: args.email,
                 age: args.age
-            }
+            };
 
             users.push(user);
 
             return user;
+        },
+        createPost(parent, args, ctx, info) {
+            const userExists = users.some((user) => user.id === args.author);
+
+            if (!userExists) {
+                throw new Error('User not found');
+            }
+
+            const post = {
+                id: uuidv4(),
+                title: args.title,
+                body: args.body,
+                published: args.published,
+                author: args.author
+            };
+
+            posts.push(post);
+
+            return post;
+        },
+        createComment(parent, args, ctx, info){
+            const userExists = users.some((user) => user.id === args.author);
+            const postExists = posts.some((post) => post.id === args.post && post.published);
+
+            if (!userExists || !postExists) {
+                throw new Error('Unable to find user and post');
+            }
+
+            const comment = {
+                id: uuidv4(),
+                text: args.text,
+                author: args.author,
+                post: args.post
+            };
+
+            comments.push(comment);
+
+            return comment;
         }
     },
     Post: {
         author(parent, args, ctx, info) {
             return users.find((user) => {
                 return user.id === parent.author;
-            });
+            })
         },
         comments(parent, args, ctx, info) {
             return comments.filter((comment) => {
-                return comment.id === parent.id;
+                return comment.post === parent.id;
+            });
+        }
+    },
+    Comment: {
+        author(parent, args, ctx, info) {
+            return users.find((user) => {
+                return user.id === parent.author;
+            });
+        },
+        post(parent, args, ctx, info) {
+            return posts.find((post) => {
+                return post.id === parent.post;
             });
         }
     },
@@ -200,20 +243,8 @@ const resolvers = {
                 return comment.author === parent.id;
             });
         }
-    },
-    Comment: {
-        author(parent, args, ctx, info) {
-            return users.find((user) => {
-                return user.id === parent.author;
-            });
-        },
-        post(parent, args, ctx, info) {
-            return posts.find((post) => {
-                return post.author === parent.id;
-            });
-        }
     }
-};
+}
 
 // ! new server instance
 const server = new GraphQLServer({
