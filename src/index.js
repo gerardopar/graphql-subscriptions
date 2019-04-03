@@ -2,7 +2,7 @@ import { GraphQLServer } from 'graphql-yoga';
 import uuidv4 from 'uuid/v4';
 
 // Demo users data
-const users = [{
+let users = [{
         id: '1',
         name: 'johnDoe',
         email: 'johndoe@example.com',
@@ -16,7 +16,7 @@ const users = [{
     }];
 
 // Demo posts data
-const posts = [{
+let posts = [{
         id: '1',
         title: 'Top front-end framework?',
         body: 'React.JS is Awesome!',
@@ -39,7 +39,7 @@ const posts = [{
     }];
 
 // Demo comments data
-const comments = [{
+let comments = [{
         id: '1',
         text: 'first comment',
         author: '1',
@@ -77,6 +77,7 @@ const typeDefs = `
 
     type Mutation {
         createUser(data: CreateUserInput!) : User!
+        deleteUser(id: ID!) : User!
         createPost(data: CreatePostInput!) : Post!
         createComment(data: CreateCommentInput!) : Comment!
     }
@@ -170,6 +171,7 @@ const resolvers = {
         }
     },
     Mutation: {
+        // ! user mutations 
         createUser(parent, args, ctx, info) {
             const emailTaken = users.some((user) => user.email === args.data.email);
 
@@ -193,6 +195,31 @@ const resolvers = {
 
             return user;
         },
+        deleteUser(parent, args, ctx, info){
+            const userIndex = users.findIndex((user) => (user.id === args.id)); // find user index
+
+            if(userIndex === -1) {
+                throw new Error('User not found'); // if the user does not exist throw an error
+            }
+
+            const deletedUsers = users.splice(userIndex, 1); // remove the user from the users array
+
+            posts = posts.filter((post) => {
+                const match = post.author === args.id; // filter posts that contain the deletedUser as the author
+
+                if(match) { // if the post.author matches the comment.author
+                    comments = comments.filter((comment) => (comment.post !== post.id)); // filter the comments
+                }
+
+                return !match;
+            });
+
+            comments = comments.filter((comment) => comment.author !== args.id); // filter the comments
+
+            return deletedUsers[0]; 
+        },
+
+        // ! post mutations 
         createPost(parent, args, ctx, info) {
             const userExists = users.some((user) => user.id === args.data.author);
 
@@ -217,6 +244,8 @@ const resolvers = {
 
             return post;
         },
+        
+        // ! comment mutations 
         createComment(parent, args, ctx, info){
             const userExists = users.some((user) => user.id === args.data.author);
             const postExists = posts.some((post) => post.id === args.data.post && post.published);
