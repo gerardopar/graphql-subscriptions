@@ -41,6 +41,34 @@ const Mutation = {
 
         return deletedUsers[0]; 
     },
+    updateUser(parent, args, { db }, info){
+        const { id, data } = args;
+        const user = db.users.find((user) => (user.id === id)); // find the user to update
+
+        if(!user) {
+            throw new Error('User not found'); // check if the user exists
+        }
+
+        if(typeof data.email === 'string') { // check if the email is a string
+            const emailTaken = db.users.some((user) => (user.email === data.email)); // check if the email doesnt exist
+
+            if(emailTaken) {
+                throw new Error('Email taken'); // if the email already exists throw an error
+            }
+
+            user.email = data.email; // update the user email
+        }
+
+        if(typeof data.name === 'string') { // check if the name is a string
+            user.name = data.name; // update the user name
+        }
+
+        if(typeof data.age !== undefined) { // if the age is not undefined
+            user.age = data.age; // update the user age
+        }
+
+        return user; // return the updated user
+    },
 
     // # post mutations 
     createPost(parent, args, { db }, info) {
@@ -71,6 +99,28 @@ const Mutation = {
         db.comments = db.comments.filter((comment) => comment.post !== args.id); // filter the comments
 
         return deletedPost[0]; // return the deleted post
+    },
+    updatePost(parent, args, { db }, info) {
+        const { id, data } = args;
+        const post = db.posts.find((post) => (post.id === id)); // find the post to update
+
+        if(!post) {
+            throw new Error('Post not found'); // check if the post exists
+        }
+
+        if(typeof data.title === 'string') { // check if the title is a string
+            post.title = data.title; // update the post title
+        }
+
+        if(typeof data.body === 'string') { // check if the body is a string
+            post.body = data.body; // update the post body
+        }
+
+        if(typeof data.published === 'boolean') { // check if published is a boolean
+            post.published = data.published; // update the post published
+        }
+
+        return post;
     },
     
     // # comment mutations 
@@ -103,6 +153,20 @@ const Mutation = {
         db.comments = db.comments.filter((comment) => comment.id !== args.id); // filter the comments
 
         return deletedComment[0]; // return the deleted comment
+    },
+    updateComment(parent, args, { db }, info) {
+        const { id, data } = args;
+        const comment = db.comments.find((comment) => (comment.id === id)); // find the comment to update
+
+        if(!comment) {
+            throw new Error('Comment not found'); // check if the comment exists
+        }
+
+        if(typeof data.text === 'string') { // check if the text is a string
+            comment.text = data.text; // update the comment name
+        }
+
+        return comment;
     }
 };
 
