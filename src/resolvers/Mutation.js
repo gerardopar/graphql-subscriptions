@@ -71,7 +71,7 @@ const Mutation = {
     },
 
     // # post mutations 
-    createPost(parent, args, { db }, info) {
+    createPost(parent, args, { db, pubsub }, info) {
         const userExists = db.users.some((user) => user.id === args.data.author);
 
         if (!userExists) {
@@ -85,24 +85,43 @@ const Mutation = {
 
         db.posts.push(post);
 
+        if(args.data.published) {
+            pubsub.publish(`post`, { 
+                post: {
+                    mutation: 'CREATED',
+                    data: post
+                } 
+            })
+        }
+
         return post;
     },
-    deletePost(parent, args, { db }, info) {
+    deletePost(parent, args, { db, subsub }, info) {
         const postIndex = db.posts.findIndex((post) => (post.id === args.id)); // find post index
 
         if(postIndex === -1) {
             throw new Error('Post not found'); // if the post does not exist throw an error
         }
 
-        const deletedPost = db.posts.splice(postIndex, 1); // remove the post from the users array
+        const [deletedPost] = db.posts.splice(postIndex, 1); // remove the post from the users array
 
         db.comments = db.comments.filter((comment) => comment.post !== args.id); // filter the comments
 
-        return deletedPost[0]; // return the deleted post
+        if(deletedPost.publshed) {
+            pubsub.publish(`post`, { 
+                post: {
+                    mutation: 'DELETED',
+                    data: post
+                } 
+            })
+        }
+
+        return deletedPost; // return the deleted post
     },
-    updatePost(parent, args, { db }, info) {
+    updatePost(parent, args, { db, pubsub }, info) {
         const { id, data } = args;
         const post = db.posts.find((post) => (post.id === id)); // find the post to update
+        const originalPost = {...post};
 
         if(!post) {
             throw new Error('Post not found'); // check if the post exists
@@ -118,6 +137,29 @@ const Mutation = {
 
         if(typeof data.published === 'boolean') { // check if published is a boolean
             post.published = data.published; // update the post published
+
+            if(originalPost.published && !post.published) { // check if the original value is true and is being udpated to false
+                pubsub.publish(`post`, { 
+                    post: {
+                        mutation: 'DELETED',
+                        data: post
+                    } 
+                })
+            } else if (!originalPost.published && post.published) { // check if the original value is false and is being udpated to true
+                pubsub.publish(`post`, { 
+                    post: {
+                        mutation: 'CREATED',
+                        data: post
+                    } 
+                })
+            } else if (post.published) { // check if the post value is true 
+                pubsub.publish(`post`, { 
+                    post: {
+                        mutation: 'UPDATED',
+                        data: post
+                    } 
+                })
+            }
         }
 
         return post;
@@ -139,22 +181,33 @@ const Mutation = {
 
         db.comments.push(comment);
 
-        pubsub.publish(`comment ${args.data.post}`, { comment: comment });
+        pubsub.publish(`comment ${args.data.post}`, { 
+            comment: {
+                mutation: 'CREATED',
+                data: comment
+            }
+        });
 
         return comment;
     },
-    deleteComment(parent, args, { db }, info) {
+    deleteComment(parent, args, { db, pubsub }, info) {
         const commentIndex = db.comments.findIndex((comment) => (comment.id === args.id)); // find comment index
 
         if(commentIndex === -1) {
             throw new Error('Comment not found'); // if the comment does not exist throw an error
         }
 
-        const deletedComment = db.comments.splice(commentIndex, 1); // remove the comment from the users array
+        const [deletedComment] = db.comments.splice(commentIndex, 1); // remove the comment from the users array
+        // db.comments = db.comments.filter((comment) => comment.id !== args.id); // filter the comments
 
-        db.comments = db.comments.filter((comment) => comment.id !== args.id); // filter the comments
+        pubsub.publish(`comment ${deletedComment.post}`, { 
+            comment: {
+                mutation: 'DELETED',
+                data: deletedComment
+            }
+        });
 
-        return deletedComment[0]; // return the deleted comment
+        return deletedComment; // return the deleted comment
     },
     updateComment(parent, args, { db }, info) {
         const { id, data } = args;
@@ -167,6 +220,13 @@ const Mutation = {
         if(typeof data.text === 'string') { // check if the text is a string
             comment.text = data.text; // update the comment name
         }
+
+        pubsub.publish(`comment ${comment.post}`, { 
+            comment: {
+                mutation: 'UPDATE',
+                data: comment
+            }
+        });
 
         return comment;
     }
